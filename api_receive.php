@@ -6,7 +6,7 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 // Koneksi ke Database
-$db = new mysqli('localhost', 'root', '', 'line_monitor');
+$db = new mysqli('localhost', 'root', '', 'seid_ac_line-monitor');
 
 if ($db->connect_error) {
     http_response_code(500);
