@@ -27,10 +27,7 @@ count = 0
 
 # Setup logging
 log_filename = "/home/pi/Desktop/count/logfile.log"
-logging.basicConfig(filename=log_filename, level=logging.INFO,
-                    format='%(asctime)s - %(message)s')
-
-logging.info(f"Program count.py dimulain untuk Mesin {MACHINE_ID}. GPIO 17 Power ON (3.3V).")
+logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(asctime)s - %(message)s')
 
 try:
     while True:
@@ -40,18 +37,14 @@ try:
         if previous_state == GPIO.LOW and current_state == GPIO.HIGH: # Sinyal baru masuk
             count = 1
             previous_state = current_state
-            print(f"[{MACHINE_ID}] Count: {count}")
 
         if previous_state == GPIO.HIGH and current_state == GPIO.HIGH: # Sinyal masih aktif
             count += 1
             previous_state = current_state
-            print(f"[{MACHINE_ID}] Count: {count}")
 
         if count <= 3 and previous_state == GPIO.HIGH and current_state == GPIO.LOW: # Sinyal terputus terlalu cepat
             count = 0
             previous_state = current_state
-            logging.info("Ignored short pulse (count <= 3)")
-            print(f"[{MACHINE_ID}] Not Output")
         
         if count > 3 and previous_state == GPIO.HIGH and current_state == GPIO.LOW: # Sinyal terputus setelah > 3 detik (Valid)
             
@@ -59,24 +52,19 @@ try:
             try:
                 payload = {
                     "machine_id": MACHINE_ID,
-                    "count": count
                 }
                 response = requests.post(SERVER_URL, json=payload, timeout=3)
                 logging.info(f"Data {MACHINE_ID} terkirim. Status Code: {response.status_code}")
-                print(f"[{MACHINE_ID}] Data terkirim ke Server ({response.status_code})")
             except Exception as e:
                 logging.error(f"Gagal mengirim data {MACHINE_ID} ke server: {str(e)}")
-                print(f"[{MACHINE_ID}] Gagal koneksi ke server: {str(e)}")
             
             previous_state = GPIO.LOW
             count = 0
-            print(f"[{MACHINE_ID}] Proses Selesai")
         
         time.sleep(1)
 
 except KeyboardInterrupt:
     logging.info("Program dihentikan oleh user.")
-    print("Stopped by user")
 
 except Exception as e:
     logging.error(f"Error terjadi: {str(e)}")
