@@ -208,11 +208,11 @@
 
                 // Hanya tampilkan Stop Time jika BUKAN area Injection
                 const stopTimeHtml = isInjection ? '' : `
-            <div class="d-flex justify-content-between fs-6 border-top border-secondary pt-1 mt-1">
-              <span>Total Stop Time:</span>
-              <strong class="fs-6 text-warning">${formatTime(m.total_stop_seconds)}</strong>
-            </div>
-        `;
+                    <div class="d-flex justify-content-between fs-6 border-top border-secondary pt-1 mt-1">
+                    <span>Total Stop Time:</span>
+                    <strong class="fs-6 text-warning">${formatTime(m.total_stop_seconds)}</strong>
+                    </div>
+                `;
 
                 return `
                 <div class="col-md-3">
