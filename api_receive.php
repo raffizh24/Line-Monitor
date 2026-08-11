@@ -4,16 +4,16 @@ header('Content-Type: application/json');
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-// Koneksi ke Database
 $db = new mysqli('localhost', 'root', '', 'seid_ac_line-monitor');
 
 if ($db->connect_error) {
     http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => 'Database connection failed: ' . $db->connect_error]);
+    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
     exit;
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
+$json_raw = file_get_contents('php://input');
+$input    = json_decode($json_raw, true);
 
 $machine_id    = isset($input['machine_id']) ? $db->real_escape_string($input['machine_id']) : null;
 $status        = isset($input['status']) ? strtoupper($input['status']) : null;
@@ -22,26 +22,38 @@ $periode       = date('Y-m');
 
 if ($machine_id) {
 
-    // 1. JIKA SINYAL DARI ESP32 DENGAN STATUS "OFF" (Kirim hasil durasi stop)
+    // CASE 1: Sinyal STOP / OFF (Tombol ditekan)
     if ($status === 'OFF') {
-        // Update last_signal menjadi NOW() dan akumulasikan durasi stop (misal ke kolom total_stop_seconds)
-        $sql = "INSERT INTO machine_monthly (machine_id, periode, last_signal, total_stop_seconds) 
-                VALUES ('$machine_id', '$periode', NOW(), $stop_duration) 
+        $sql = "INSERT INTO machine_monthly (machine_id, periode, last_signal, status, total_qty, total_stop_seconds) 
+                VALUES ('$machine_id', '$periode', NOW(), 'RED', 0, 0) 
                 ON DUPLICATE KEY UPDATE 
-                    last_signal = NOW(), 
+                    last_signal = NOW(),
+                    status = 'RED'";
+    }
+
+    // CASE 2: Sinyal Kembali RUNNING / ON (Tombol dilepas)
+    else if ($status === 'ON') {
+        $sql = "INSERT INTO machine_monthly (machine_id, periode, last_signal, status, total_qty, total_stop_seconds) 
+                VALUES ('$machine_id', '$periode', NOW(), 'GREEN', 1, $stop_duration) 
+                ON DUPLICATE KEY UPDATE 
+                    last_signal = NOW(),
+                    status = 'GREEN',
+                    total_qty = total_qty + 1, 
                     total_stop_seconds = total_stop_seconds + $stop_duration";
     }
-    // 2. JIKA SINYAL DARI RASPBERRY PI (Hanya machine_id) ATAU STATUS "ON"
+
+    // CASE 3: Sinyal Tambah QTY (Raspberry Pi)
     else {
-        // Otomatis menambah total_qty + 1 dan update last_signal ke NOW()
-        $sql = "INSERT INTO machine_monthly (machine_id, periode, last_signal, total_qty) 
-                VALUES ('$machine_id', '$periode', NOW(), 1) 
+        $sql = "INSERT INTO machine_monthly (machine_id, periode, last_signal, status, total_qty, total_stop_seconds) 
+                VALUES ('$machine_id', '$periode', NOW(), 'GREEN', 1, 0) 
                 ON DUPLICATE KEY UPDATE 
-                    last_signal = NOW(), 
+                    last_signal = NOW(),
+                    status = 'GREEN',
                     total_qty = total_qty + 1";
     }
 
     if ($db->query($sql)) {
+        http_response_code(200);
         echo json_encode(['status' => 'success', 'message' => 'Data updated successfully']);
     } else {
         http_response_code(500);
@@ -49,5 +61,5 @@ if ($machine_id) {
     }
 } else {
     http_response_code(400);
-    echo json_encode(['status' => 'error', 'message' => 'Invalid Data Received', 'received' => $input]);
+    echo json_encode(['status' => 'error', 'message' => 'Invalid Data']);
 }
