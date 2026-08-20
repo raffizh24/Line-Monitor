@@ -4,13 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Line Monitoring System - AC Factory Dashboard</title>
+    <title>Dashboard Monitoring Produksi 3D</title>
 
-    <!-- Bootstrap 5 CSS LOKAL -->
-    <link href="css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Bootstrap Icons (CDN / Lokal) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- BOOTSTRAP CSS LOKAL -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
 
     <style>
         body {
@@ -20,219 +17,440 @@
             overflow-x: hidden;
         }
 
-        .carousel-item {
-            min-height: 90vh;
-        }
-
         .card-machine {
-            border: none;
             border-radius: 12px;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
         .card-machine:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5) !important;
         }
 
         .bg-running {
-            background: linear-gradient(135deg, #198754, #146c43);
+            background: linear-gradient(135deg, #198754, #0f5132) !important;
+            border: 1px solid #25cff2;
         }
 
         .bg-stop {
-            background: linear-gradient(135deg, #dc3545, #b02a37);
+            background: linear-gradient(135deg, #dc3545, #842029) !important;
+            border: 1px solid #ea868f;
         }
 
-        .border-dashed {
-            border: 2px dashed #6c757d !important;
+        /* Container 3D di Atas */
+        .canvas-container {
+            width: 100%;
+            height: 450px;
+            position: relative;
             background-color: #1e1e1e;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #333;
         }
 
-        .area-title {
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            display: inline-block;
-            padding-bottom: 5px;
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(18, 18, 18, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .carousel-control-prev,
+        .carousel-control-next {
+            width: 3%;
+        }
+
+        /* Custom Indikator Carousel */
+        .carousel-indicators {
+            position: relative;
+            margin-bottom: 0;
+            margin-top: 10px;
         }
 
         .carousel-indicators [data-bs-target] {
-            width: 15px;
-            height: 15px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            margin: 0 6px;
+            background-color: #6c757d;
+            border: none;
+            opacity: 0.5;
+            transition: all 0.3s ease;
+        }
+
+        .carousel-indicators .active {
+            background-color: #0d6efd;
+            width: 28px;
+            border-radius: 10px;
+            opacity: 1;
         }
     </style>
+
+    <!-- THREE.JS LIBRARY LOKAL -->
+    <script src="js/three.min.js"></script>
+    <script src="js/GLTFLoader.js"></script>
+    <script src="js/OrbitControls.js"></script>
 </head>
 
 <body>
 
-    <!-- NAVBAR HEADER -->
-    <nav class="navbar navbar-dark bg-dark px-4 shadow-sm">
-        <span class="navbar-brand mb-0 h1 fs-3 fw-bold text-primary">LINE MONITORING DASHBOARD</span>
-        <div>
-            <span id="off-production-badge" class="badge bg-warning text-dark fs-6 d-none me-2">OFF PRODUCTION</span>
-            <span id="current-month" class="badge bg-secondary fs-6">Loading Period...</span>
-        </div>
-    </nav>
-
-    <!-- CAROUSEL WRAPPER -->
-    <div id="dashboardCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
-
-        <!-- Indikator Slide -->
-        <div class="carousel-indicators mb-1">
-            <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Injection"></button>
-            <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="1" aria-label="Main Assy"></button>
-            <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="2" aria-label="HE & Piping"></button>
+    <div class="container-fluid py-3 px-4">
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-center mb-2 border-bottom border-secondary pb-2">
+            <h2 class="fw-bold mb-0 text-white">DASHBOARD LINE MONITORING</h2>
+            <div class="d-flex align-items-center gap-3">
+                <span id="off-production-badge" class="badge bg-warning text-dark fs-6 d-none">OFF PRODUCTION</span>
+                <span class="badge bg-primary fs-6" id="current-month">MEMUAT...</span>
+            </div>
         </div>
 
-        <div class="carousel-inner">
+        <!-- CAROUSEL / SLIDER UTAMA -->
+        <div id="dashboardCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="10000">
 
-            <!-- SLIDE 1: AREA INJECTION (A1-A4 & B1-B4) -->
-            <div class="carousel-item active">
-                <div class="container-fluid p-4">
-                    <div class="text-center mb-4">
-                        <h2 class="fw-bold text-info area-title">INHOUSE INJECTION</h2>
-                    </div>
-                    <div class="row g-4" id="area-injection">
-                        <!-- Kartu Mesin Injection akan dirender otomatis -->
-                    </div>
-                </div>
+            <!-- INDIKATOR TITIK HALAMAN -->
+            <div class="carousel-indicators mb-3">
+                <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1 (Main Assy)"></button>
+                <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="1" aria-label="Slide 2 (Injection)"></button>
             </div>
 
-            <!-- SLIDE 2: AREA MAIN ASSY (IDU & ODU) -->
-            <div class="carousel-item">
-                <div class="container-fluid p-4">
-                    <div class="text-center mb-3">
-                        <h2 class="fw-bold text-success area-title">MAIN ASSY</h2>
-                    </div>
+            <div class="carousel-inner">
 
-                    <!-- SUB-AREA IDU (INDOOR AC) -->
-                    <div class="mb-4">
-                        <h4 class="text-info fw-bold border-bottom border-info pb-2 mb-3">
-                            <i class="bi bi-fan text-info me-2"></i> INDOOR LINE
-                            <div class="row g-3" id="area-idu">
-                                <!-- Kartu Mesin IDU akan dirender otomatis -->
+                <!-- SLIDE 1: MAIN ASSY LINE (IDU & ODU) -->
+                <div class="carousel-item active">
+                    <div class="d-flex flex-column gap-3">
+                        <!-- ATAS: 3D MODEL MAIN ASSY -->
+                        <div class="canvas-container">
+                            <div id="loading-main" class="loading-overlay">
+                                <div class="spinner-border text-primary mb-2" role="status"></div>
+                                <span class="loading-text text-light">Memuat 3D Model Main Assy...</span>
                             </div>
-                    </div>
-
-                    <!-- SUB-AREA ODU (OUTDOOR AC) -->
-                    <div>
-                        <h4 class="text-warning fw-bold border-bottom border-warning pb-2 mb-3">
-                            <i class="bi bi-cpu text-warning me-2"></i> OUTDOOR LINE
-                        </h4>
-                        <div class="row g-3" id="area-odu">
-                            <!-- Kartu Mesin ODU akan dirender otomatis -->
+                            <div id="3d-container-main" style="width: 100%; height: 100%;"></div>
                         </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- SLIDE 3: AREA HE & PIPING -->
-            <div class="carousel-item">
-                <div class="container-fluid p-4">
-                    <div class="text-center mb-4">
-                        <h2 class="fw-bold text-warning area-title">INHOUSE HE & PIPING</h2>
-                    </div>
-                    <div class="row g-4" id="area-he-piping">
-                        <div class="col-md-6">
-                            <div class="card card-machine text-center p-5 border-dashed">
-                                <h3 class="text-light fw-bold">AREA HE</h3>
-                                <p class="text-warning mt-2 fs-5">Belum Terpasang ESP32</p>
-                                <span class="badge bg-secondary w-50 mx-auto mt-3">STATUS: OFFLINE</span>
+                        <!-- BAWAH: CARD STATUS IDU & ODU -->
+                        <div class="row g-3">
+                            <!-- AREA IDU LINE -->
+                            <div class="col-12 col-xl-6">
+                                <div class="card bg-dark text-white border-secondary h-100">
+                                    <div class="card-header bg-secondary bg-opacity-25 fw-bold text-uppercase fs-6 py-2">
+                                        AREA IDU LINE
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-2 justify-content-start" id="area-idu"></div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card card-machine text-center p-5 border-dashed">
-                                <h3 class="text-light fw-bold">AREA PIPING</h3>
-                                <p class="text-warning mt-2 fs-5">Belum Terpasang ESP32</p>
-                                <span class="badge bg-secondary w-50 mx-auto mt-3">STATUS: OFFLINE</span>
+
+                            <!-- AREA ODU LINE -->
+                            <div class="col-12 col-xl-6">
+                                <div class="card bg-dark text-white border-secondary h-100">
+                                    <div class="card-header bg-secondary bg-opacity-25 fw-bold text-uppercase fs-6 py-2">
+                                        AREA ODU LINE
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-2 justify-content-start" id="area-odu"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- SLIDE 2: INJECTION LINE -->
+                <div class="carousel-item">
+                    <div class="d-flex flex-column gap-3">
+                        <!-- ATAS: 3D MODEL INJECTION -->
+                        <div class="canvas-container">
+                            <div id="loading-inj" class="loading-overlay">
+                                <div class="spinner-border text-primary mb-2" role="status"></div>
+                                <span class="loading-text text-light">Memuat 3D Model Injection...</span>
+                            </div>
+                            <div id="3d-container-inj" style="width: 100%; height: 100%;"></div>
+                        </div>
+
+                        <!-- BAWAH: CARD STATUS INJECTION -->
+                        <div class="card bg-dark text-white border-secondary">
+                            <div class="card-header bg-secondary bg-opacity-25 fw-bold text-uppercase fs-5 py-2">
+                                AREA INJECTION LINE
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2 justify-content-start" id="area-injection"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
+            <!-- CAROUSEL CONTROLS -->
+            <button class="carousel-control-prev" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
         </div>
-
-        <!-- Tombol Navigasi Manual -->
-        <button class="carousel-control-prev d-none" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Previous</span>
-        </button>
-        <button class="carousel-control-next d-none" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="next">
-            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Next</span>
-        </button>
     </div>
 
-    <!-- Bootstrap 5 JS Bundle LOKAL -->
+    <!-- BOOTSTRAP JS LOKAL -->
     <script src="js/bootstrap.bundle.min.js"></script>
 
-    <!-- REAL-TIME FETCHING & RENDER SCRIPT -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var myCarousel = document.querySelector('#dashboardCarousel');
-            if (myCarousel && typeof bootstrap !== 'undefined') {
-                var carousel = new bootstrap.Carousel(myCarousel, {
-                    interval: 5000,
-                    ride: 'carousel',
-                    wrap: true
+        // Master List Data IDU & ODU
+        const MASTER_IDU = [
+            { id: 'IDU-Cabinet', name: 'Cabinet Assy' },
+            { id: 'IDU-Helium', name: 'Evaporator Assy' },
+            { id: 'IDU-Main', name: 'Main Assy' },
+            { id: 'IDU-Electrical', name: 'Electrical Inspection' },
+            { id: 'IDU-Final', name: 'Final Process' }
+        ];
+
+        const MASTER_ODU = [
+            { id: 'ODU-Basepan', name: 'Basepan Assy' },
+            { id: 'ODU-Vacuum', name: 'Vacuum Process' },
+            { id: 'ODU-Charging', name: 'Charging Process' },
+            { id: 'ODU-Main', name: 'Main Assy' },
+            { id: 'ODU-Aging', name: 'Electrical Aging' },
+            { id: 'ODU-Final', name: 'Final Process' }
+        ];
+
+        // MAPPING NODE & MESH UNTUK MAIN ASSY LINE 3D (IDU & ODU)
+        const MESH_MAPPING_MAIN = {
+            'IDU-Cabinet': ['IDU.Cabinet', 'IDU_Cabinet', 'Cabinet'],
+            'IDU-Electrical': ['IDU.EI', 'IDU_EI', 'EI'],
+            'IDU-Helium': ['IDU.Evaporator', 'IDU_Evaporator', 'Evaporator', 'Helium'],
+            'IDU-Final': ['IDU.Final', 'IDU_Final'],
+            'IDU-Main': ['IDU.MAP', 'IDU_MAP', 'MAP'],
+            'ODU-Basepan': ['ODU.Basepan', 'ODU_Basepan', 'Basepan'],
+            'ODU-Vacuum': ['ODU.Vacuum', 'ODU_Vacuum', 'Vacuum'],
+            'ODU-Charging': ['ODU.Charging', 'ODU_Charging', 'Charging'],
+            'ODU-Main': ['ODU.MAP', 'ODU_MAP'],
+            'ODU-Aging': ['ODU.Aging', 'ODU_Aging', 'Aging'],
+            'ODU-Final': ['ODU.Final', 'ODU_Final']
+        };
+
+        const MESH_MAPPING_INJECTION = {
+            'A1': ['Machine1', 'Mc1', 'A1'],
+            'A2': ['Machine2', 'Mc2', 'A2'],
+            'A3': ['Machine3', 'Mc3', 'A3'],
+            'A4': ['Machine4', 'Mc4', 'A4'],
+            'B1': ['Machine5', 'Mc5', 'B1'],
+            'B2': ['Machine6', 'Mc6', 'B2'],
+            'B3': ['Machine7', 'Mc7', 'B3'],
+            'B4': ['Machine8', 'Mc8', 'B4']
+        };
+
+        const COLOR_RUNNING = 0x00FF00; // Hijau
+        const COLOR_STOP = 0xFF0000;    // Merah
+        const COLOR_OFFLINE = 0x6c757d; // Abu-abu
+
+        const scenes3D = {
+            main: {
+                containerId: '3d-container-main',
+                loadingId: 'loading-main',
+                path: '3D/MainAssy.glb',
+                loadedModel: null,
+                scene: null,
+                camera: null,
+                renderer: null,
+                controls: null
+            },
+            inj: {
+                containerId: '3d-container-inj',
+                loadingId: 'loading-inj',
+                path: '3D/Injection.glb',
+                loadedModel: null,
+                scene: null,
+                camera: null,
+                renderer: null,
+                controls: null
+            }
+        };
+
+        let latestMachineData = [];
+
+        function cleanString(str) {
+            return String(str || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        }
+
+        function findMachineData(machineId) {
+            if (!latestMachineData || latestMachineData.length === 0) return null;
+            const target = cleanString(machineId);
+            return latestMachineData.find(m => cleanString(m.machine_id) === target);
+        }
+
+        function initSingle3D(key) {
+            const item = scenes3D[key];
+            const container = document.getElementById(item.containerId);
+            if (!container || typeof THREE === 'undefined') return;
+
+            item.scene = new THREE.Scene();
+            item.scene.background = new THREE.Color(0x1a1a1a);
+
+            item.camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+
+            item.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            item.renderer.setSize(container.clientWidth, container.clientHeight);
+            item.renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(item.renderer.domElement);
+
+            // Pencahayaan
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+            item.scene.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight1.position.set(10, 20, 15);
+            item.scene.add(dirLight1);
+
+            if (typeof THREE.OrbitControls !== 'undefined') {
+                item.controls = new THREE.OrbitControls(item.camera, item.renderer.domElement);
+                item.controls.enableDamping = true;
+                item.controls.dampingFactor = 0.05;
+            }
+
+            if (typeof THREE.GLTFLoader === 'undefined') return;
+
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                item.path,
+                function(gltf) {
+                    item.loadedModel = gltf.scene;
+                    item.scene.add(item.loadedModel);
+
+                    const box = new THREE.Box3().setFromObject(item.loadedModel);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    item.camera.position.set(center.x, center.y + (maxDim * 0.35), center.z + (maxDim * 0.35));
+                    item.camera.lookAt(center);
+
+                    if (item.controls) {
+                        item.controls.target.copy(center);
+                        item.controls.update();
+                    }
+
+                    const loadingElem = document.getElementById(item.loadingId);
+                    if (loadingElem) loadingElem.style.display = 'none';
+
+                    update3DStatus();
+
+                    function animate() {
+                        requestAnimationFrame(animate);
+                        if (item.controls) item.controls.update();
+                        item.renderer.render(item.scene, item.camera);
+                    }
+                    animate();
+                },
+                null,
+                function(error) {
+                    console.error(`GAGAL MEMUAT GLB (${item.path}):`, error);
+                    const loadingElem = document.getElementById(item.loadingId);
+                    if (loadingElem) {
+                        const txt = loadingElem.querySelector('.loading-text');
+                        if (txt) {
+                            txt.innerText = `Gagal memuat file 3D GLB`;
+                            txt.classList.add('text-danger');
+                        }
+                    }
+                }
+            );
+        }
+
+        // PENETRASI MATERIAL KEBAL TEKSTUR & UNTUK SELURUH SUB-CHILD MESH
+        function applyColorToMesh(object3d, hexColor) {
+            if (!object3d) return;
+
+            object3d.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = new THREE.MeshBasicMaterial({
+                        color: hexColor,
+                        wireframe: false,
+                        side: THREE.DoubleSide
+                    });
+                    child.material.needsUpdate = true;
+                }
+            });
+        }
+
+        function update3DStatus() {
+            // 1. Update Main Assy Model
+            if (scenes3D.main.loadedModel) {
+                Object.keys(MESH_MAPPING_MAIN).forEach(machineId => {
+                    const targetNames = MESH_MAPPING_MAIN[machineId];
+                    const realData = findMachineData(machineId);
+
+                    let targetColor = COLOR_RUNNING;
+                    if (realData) {
+                        targetColor = (realData.status === 'GREEN') ? COLOR_RUNNING : COLOR_STOP;
+                    }
+
+                    scenes3D.main.loadedModel.traverse((child) => {
+                        const childClean = cleanString(child.name);
+                        if (!childClean) return;
+
+                        const isMatch = targetNames.some(tName => {
+                            const tClean = cleanString(tName);
+                            return childClean.includes(tClean) || tClean.includes(childClean);
+                        });
+
+                        if (isMatch) {
+                            applyColorToMesh(child, targetColor);
+                        }
+                    });
                 });
             }
-        });
 
-        // 1. MASTER LIST MESIN IDU & ODU
-        const MASTER_IDU = [{
-                id: 'IDU-Cabinet',
-                name: 'Cabinet Assy Conv'
-            },
-            {
-                id: 'IDU-Helium',
-                name: 'Evaporator Assy Conv'
-            },
-            {
-                id: 'IDU-Main',
-                name: 'Main Assy Conv'
-            },
-            {
-                id: 'IDU-Electrical',
-                name: 'Electrical Ins Conv'
-            },
-            {
-                id: 'IDU-Final',
-                name: 'Final Process Conv'
+            // 2. Update Injection Model
+            if (scenes3D.inj.loadedModel) {
+                Object.keys(MESH_MAPPING_INJECTION).forEach(machineId => {
+                    const targetNames = MESH_MAPPING_INJECTION[machineId];
+                    const realData = findMachineData(machineId);
+
+                    let targetColor = COLOR_OFFLINE;
+                    if (realData) {
+                        targetColor = (realData.status === 'GREEN') ? COLOR_RUNNING : COLOR_STOP;
+                    }
+
+                    scenes3D.inj.loadedModel.traverse((child) => {
+                        const childClean = cleanString(child.name);
+                        if (!childClean) return;
+
+                        const isMatch = targetNames.some(tName => {
+                            const tClean = cleanString(tName);
+                            return childClean.includes(tClean) || tClean.includes(childClean);
+                        });
+
+                        if (isMatch) {
+                            applyColorToMesh(child, targetColor);
+                        }
+                    });
+                });
             }
-        ];
+        }
 
-        const MASTER_ODU = [{
-                id: 'ODU-Basepan',
-                name: 'Basepan Assy Conv'
-            },
-            {
-                id: 'ODU-Vacuum',
-                name: 'Vacuum Process Conv'
-            },
-            {
-                id: 'ODU-Charging',
-                name: 'Charging Process Conv'
-            },
-            {
-                id: 'ODU-Main',
-                name: 'Main Assy Conv'
-            },
-            {
-                id: 'ODU-Aging',
-                name: 'Electrical Aging Conv'
-            },
-            {
-                id: 'ODU-Final',
-                name: 'Final Process Conv'
-            }
-        ];
+        function handleResize() {
+            Object.keys(scenes3D).forEach(key => {
+                const item = scenes3D[key];
+                const container = document.getElementById(item.containerId);
+                if (container && item.renderer && item.camera) {
+                    item.camera.aspect = container.clientWidth / container.clientHeight;
+                    item.camera.updateProjectionMatrix();
+                    item.renderer.setSize(container.clientWidth, container.clientHeight);
+                }
+            });
+        }
 
-        // Cek Apakah Semua Mesin Injection (A1-A4 & B1-B4) Sedang Mati / STOP
         function isAllInjectionStopped(machines) {
-            const injectionMachines = machines.filter(m => /^([AB][1-4])$/.test(m.machine_id));
+            const injectionMachines = machines.filter(m => /^([AB][1-4])$/i.test(m.machine_id));
             if (injectionMachines.length === 0) return false;
             return injectionMachines.every(m => m.status !== 'GREEN');
         }
@@ -252,41 +470,31 @@
                         document.getElementById('current-month').innerText = data.current_month;
 
                         const isOffProduction = isAllInjectionStopped(data.machines);
-
                         const offBadge = document.getElementById('off-production-badge');
                         if (offBadge) {
-                            if (isOffProduction) {
-                                offBadge.classList.remove('d-none');
-                            } else {
-                                offBadge.classList.add('d-none');
-                            }
+                            if (isOffProduction) offBadge.classList.remove('d-none');
+                            else offBadge.classList.add('d-none');
                         }
 
-                        // 1. Render Area Injection
-                        renderArea('area-injection', data.machines, id => /^([AB][1-4])$/.test(id), isOffProduction, 'col-md-3');
+                        latestMachineData = data.machines;
 
-                        // 2. Render Sub-Area IDU (Indoor AC)
-                        renderMasterArea('area-idu', MASTER_IDU, data.machines, isOffProduction, 'col-md-2');
+                        renderArea('area-injection', data.machines, id => /^([AB][1-4])$/i.test(id), isOffProduction, 'col-md-3 col-6');
+                        renderMasterArea('area-idu', MASTER_IDU, data.machines, isOffProduction, 'col-md-4 col-6');
+                        renderMasterArea('area-odu', MASTER_ODU, data.machines, isOffProduction, 'col-md-4 col-6');
 
-                        // 3. Render Sub-Area ODU (Outdoor AC)
-                        renderMasterArea('area-odu', MASTER_ODU, data.machines, isOffProduction, 'col-md-2');
+                        update3DStatus();
                     }
                 })
                 .catch(err => console.error("Error fetching data:", err));
         }
 
-        // Fungsi Render Standard (Untuk Injection)
         function renderArea(containerId, machines, filterFn, isOffProduction, colClass = 'col-md-3') {
             const container = document.getElementById(containerId);
             if (!container) return;
 
             const filtered = machines.filter(m => filterFn(m.machine_id));
-
             if (filtered.length === 0) {
-                container.innerHTML = `
-                <div class="col-12 text-center my-4">
-                    <p class="text-muted fs-5">Tidak ada mesin terdeteksi di area ini.</p>
-                </div>`;
+                container.innerHTML = `<div class="col-12 text-center my-3"><p class="text-muted fs-5">Tidak ada mesin terdeteksi di area ini.</p></div>`;
                 return;
             }
 
@@ -299,19 +507,19 @@
                 return `
                 <div class="${colClass}">
                     <div class="card card-machine ${bgClass} text-white shadow-lg h-100">
-                        <div class="card-body text-center d-flex flex-column justify-content-between p-3">
+                        <div class="card-body text-center d-flex flex-column justify-content-between p-2">
                             <div>
-                                <h4 class="card-title fw-bold mb-2">${m.machine_id}</h4>
+                                <h5 class="card-title fw-bold my-1">${m.machine_id}</h5>
                                 <span class="badge ${statusBadge} fs-6 px-3 py-1 fw-bold shadow-sm mb-2">${statusText}</span>
                             </div>
-                            <div class="bg-dark bg-opacity-25 rounded-3 p-2 text-start mt-2">
-                                <div class="d-flex justify-content-between mb-1 fs-6">
+                            <div class="bg-dark bg-opacity-25 rounded-3 p-2 text-start mt-1 fs-6">
+                                <div class="d-flex justify-content-between mb-1">
                                     <span>Total Qty:</span>
-                                    <strong class="fs-6">${m.total_qty || 0}</strong>
+                                    <strong>${m.total_qty || 0}</strong>
                                 </div>
-                                <div class="d-flex justify-content-between fs-6 border-top border-secondary pt-1 mt-1">
+                                <div class="d-flex justify-content-between border-top border-secondary pt-1 mt-1">
                                     <span>Last Signal:</span>
-                                    <strong class="fs-6 text-info">${m.last_signal || '-'}</strong>
+                                    <strong class="text-info">${m.last_signal || '-'}</strong>
                                 </div>
                             </div>
                         </div>
@@ -320,68 +528,71 @@
             }).join('');
         }
 
-        // Fungsi Khusus IDU & ODU (Master List + Dummy Fallback)
-        function renderMasterArea(containerId, masterList, apiMachines, isOffProduction, colClass = 'col-md-2') {
+        function renderMasterArea(containerId, masterList, apiMachines, isOffProduction, colClass = 'col-md-4') {
             const container = document.getElementById(containerId);
             if (!container) return;
 
             container.innerHTML = masterList.map(item => {
-                // Cari data asli berdasarkan ID Mesin
-                const realData = apiMachines.find(m => m.machine_id.toUpperCase() === item.id.toUpperCase());
+                const realData = findMachineData(item.id);
 
-                if (realData) {
-                    // RENDER DATA ASLI DATABASE
-                    const isGreen = realData.status === 'GREEN';
-                    const bgClass = isGreen ? 'bg-running' : 'bg-stop';
-                    const statusText = isGreen ? 'RUNNING' : 'STOP';
-                    const statusBadge = isGreen ? 'bg-light text-success' : 'bg-dark text-white';
-                    const displayStopTime = isOffProduction ? 'OFF' : formatTime(realData.total_stop_seconds || 0);
+                const machineObj = realData || {
+                    machine_id: item.id,
+                    status: 'GREEN',
+                    total_qty: 0,
+                    total_stop_seconds: 0
+                };
 
-                    return `
-                    <div class="${colClass}">
-                        <div class="card card-machine ${bgClass} text-white shadow-lg h-100">
-                            <div class="card-body text-center d-flex flex-column justify-content-between p-2">
-                                <div>
-                                    <small class="text-light fw-semibold d-block text-truncate" title="${item.name}">${item.name}</small>
-                                    <h5 class="card-title fw-bold my-1">${realData.machine_id}</h5>
-                                    <span class="badge ${statusBadge} fs-6 px-2 py-1 fw-bold shadow-sm mb-2">${statusText}</span>
+                const isGreen = machineObj.status === 'GREEN';
+                const bgClass = isGreen ? 'bg-running' : 'bg-stop';
+                const statusText = isGreen ? 'RUNNING' : 'STOP';
+                const statusBadge = isGreen ? 'bg-light text-success' : 'bg-dark text-white';
+                const displayStopTime = isOffProduction ? 'OFF' : formatTime(machineObj.total_stop_seconds || 0);
+
+                return `
+                <div class="${colClass}">
+                    <div class="card card-machine ${bgClass} text-white shadow-lg h-100">
+                        <div class="card-body text-center d-flex flex-column justify-content-between p-2">
+                            <div>
+                                <h5 class="card-title fw-bold my-2 text-truncate" title="${item.name}">${item.name}</h5>
+                                <span class="badge ${statusBadge} fs-6 px-2 py-1 fw-bold shadow-sm mb-2">${statusText}</span>
+                            </div>
+                            <div class="bg-dark bg-opacity-25 rounded-3 p-2 text-start mt-1 fs-6">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>Total Qty:</span>
+                                    <strong>${machineObj.total_qty || 0}</strong>
                                 </div>
-                                <div class="bg-dark bg-opacity-25 rounded-3 p-2 text-start mt-1 fs-6">
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>Total Qty:</span>
-                                        <strong>${realData.total_qty || 0}</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between border-top border-secondary pt-1 mt-1">
-                                        <span>Stop Time:</span>
-                                        <strong class="text-warning">${displayStopTime}</strong>
-                                    </div>
+                                <div class="d-flex justify-content-between border-top border-secondary pt-1 mt-1">
+                                    <span>Stop Time:</span>
+                                    <strong class="text-warning">${displayStopTime}</strong>
                                 </div>
                             </div>
                         </div>
-                    </div>`;
-                } else {
-                    // RENDER DUMMY CARD (Belum ada di database / belum terpasang ESP32)
-                    return `
-                    <div class="${colClass}">
-                        <div class="card card-machine border-dashed text-white shadow h-100 opacity-75">
-                            <div class="card-body text-center d-flex flex-column justify-content-between p-2">
-                                <div>
-                                    <small class="text-warning fw-semibold d-block text-truncate" title="${item.name}">${item.name}</small>
-                                    <h5 class="card-title fw-bold my-1 text-light">${item.id}</h5>
-                                    <span class="badge bg-secondary fs-6 px-2 py-1 fw-bold mb-2">OFFLINE</span>
-                                </div>
-                                <div class="bg-dark bg-opacity-50 rounded-3 p-2 text-center mt-1">
-                                    <small class="text-muted d-block" style="font-size: 0.75rem;">Belum Terpasang ESP32</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-                }
+                    </div>
+                </div>`;
             }).join('');
         }
 
-        fetchDashboardData();
-        setInterval(fetchDashboardData, 3000);
+        document.addEventListener('DOMContentLoaded', function() {
+            initSingle3D('main');
+            initSingle3D('inj');
+
+            fetchDashboardData();
+            setInterval(fetchDashboardData, 3000);
+
+            const carouselElem = document.getElementById('dashboardCarousel');
+            if (carouselElem) {
+                const bsCarousel = new bootstrap.Carousel(carouselElem, {
+                    interval: 10000,
+                    ride: 'carousel'
+                });
+
+                carouselElem.addEventListener('slid.bs.carousel', function() {
+                    handleResize();
+                });
+            }
+
+            window.addEventListener('resize', handleResize);
+        });
     </script>
 </body>
 

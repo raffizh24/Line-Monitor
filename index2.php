@@ -279,8 +279,8 @@
             'B4': ['Machine8', 'Mc8', 'B4']
         };
 
-        const COLOR_RUNNING = 0x00FF00; // Hijau
-        const COLOR_STOP = 0xFF0000; // Merah
+        const COLOR_RUNNING = 0x28a745; // Hijau yang lebih lembut (Bootstrap Success)
+        const COLOR_STOP = 0xd9534f; // Merah yang lebih lembut (Bootstrap Danger)
         const COLOR_OFFLINE = 0x6c757d; // Abu-abu
 
         const scenes3D = {
@@ -336,7 +336,6 @@
             item.renderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(item.renderer.domElement);
 
-            // Pencahayaan
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
             item.scene.add(ambientLight);
 
@@ -399,14 +398,16 @@
             );
         }
 
-        // PENETRASI MATERIAL KEBAL TEKSTUR & UNTUK SELURUH SUB-CHILD MESH
         function applyColorToMesh(object3d, hexColor) {
             if (!object3d) return;
 
             object3d.traverse((child) => {
                 if (child.isMesh) {
-                    child.material = new THREE.MeshBasicMaterial({
+                    // Menggunakan MeshStandardMaterial agar warna memiliki efek bayangan & tekstur bentuk 3D
+                    child.material = new THREE.MeshStandardMaterial({
                         color: hexColor,
+                        roughness: 0.4, // Mengatur tingkat kekasaran (semakin kecil semakin mengkilap)
+                        metalness: 0.1, // Memberikan sedikit efek refleksi material
                         wireframe: false,
                         side: THREE.DoubleSide
                     });
@@ -416,7 +417,6 @@
         }
 
         function update3DStatus() {
-            // 1. Update Main Assy Model
             if (scenes3D.main.loadedModel) {
                 Object.keys(MESH_MAPPING_MAIN).forEach(machineId => {
                     const targetNames = MESH_MAPPING_MAIN[machineId];
@@ -443,7 +443,6 @@
                 });
             }
 
-            // 2. Update Injection Model
             if (scenes3D.inj.loadedModel) {
                 Object.keys(MESH_MAPPING_INJECTION).forEach(machineId => {
                     const targetNames = MESH_MAPPING_INJECTION[machineId];
@@ -496,30 +495,191 @@
             return m > 0 ? `${m}m ${s}s` : `${s}s`;
         }
 
+        // SIMULASI DATA DASHBOARD
         function fetchDashboardData() {
-            fetch('api_status.php')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        document.getElementById('current-month').innerText = data.current_month;
+            // 1. SET STATUS AWAL: IDU-Electrical & ODU-Aging HIJAU (GREEN)
+            const simulatedData = {
+                status: 'success',
+                current_month: 'MARET 2026',
+                machines: [
+                    // --- IDU LINE ---
+                    {
+                        machine_id: 'IDU-Cabinet',
+                        status: 'GREEN',
+                        total_qty: 120,
+                        total_stop_seconds: 0
+                    },
+                    {
+                        machine_id: 'IDU-Helium',
+                        status: 'GREEN',
+                        total_qty: 115,
+                        total_stop_seconds: 0
+                    },
+                    {
+                        machine_id: 'IDU-Main',
+                        status: 'GREEN',
+                        total_qty: 110,
+                        total_stop_seconds: 0
+                    },
+                    {
+                        machine_id: 'IDU-Electrical',
+                        status: 'GREEN',
+                        total_qty: 108,
+                        total_stop_seconds: 0
+                    }, // Awalnya HIJAU
+                    {
+                        machine_id: 'IDU-Final',
+                        status: 'GREEN',
+                        total_qty: 105,
+                        total_stop_seconds: 0
+                    },
 
-                        const isOffProduction = isAllInjectionStopped(data.machines);
-                        const offBadge = document.getElementById('off-production-badge');
-                        if (offBadge) {
-                            if (isOffProduction) offBadge.classList.remove('d-none');
-                            else offBadge.classList.add('d-none');
-                        }
+                    // --- ODU LINE ---
+                    {
+                        machine_id: 'ODU-Basepan',
+                        status: 'GREEN',
+                        total_qty: 98,
+                        total_stop_seconds: 0
+                    },
+                    {
+                        machine_id: 'ODU-Vacuum',
+                        status: 'GREEN',
+                        total_qty: 95,
+                        total_stop_seconds: 0
+                    },
+                    {
+                        machine_id: 'ODU-Charging',
+                        status: 'GREEN',
+                        total_qty: 92,
+                        total_stop_seconds: 0
+                    },
+                    {
+                        machine_id: 'ODU-Main',
+                        status: 'GREEN',
+                        total_qty: 90,
+                        total_stop_seconds: 0
+                    },
+                    {
+                        machine_id: 'ODU-Aging',
+                        status: 'GREEN',
+                        total_qty: 88,
+                        total_stop_seconds: 0
+                    }, // Awalnya HIJAU
+                    {
+                        machine_id: 'ODU-Final',
+                        status: 'GREEN',
+                        total_qty: 85,
+                        total_stop_seconds: 0
+                    },
 
-                        latestMachineData = data.machines;
-
-                        renderArea('area-injection', data.machines, id => /^([AB][1-4])$/i.test(id), isOffProduction, 'col-md-3 col-6');
-                        renderMasterArea('area-idu', MASTER_IDU, data.machines, isOffProduction, 'col-md-4 col-6');
-                        renderMasterArea('area-odu', MASTER_ODU, data.machines, isOffProduction, 'col-md-4 col-6');
-
-                        update3DStatus();
+                    // --- INJECTION LINE ---
+                    {
+                        machine_id: 'A1',
+                        status: 'RED',
+                        total_qty: 450,
+                        last_signal: '14:20:05'
+                    },
+                    {
+                        machine_id: 'A2',
+                        status: 'GREEN',
+                        total_qty: 620,
+                        last_signal: '14:25:10'
+                    },
+                    {
+                        machine_id: 'A3',
+                        status: 'GREEN',
+                        total_qty: 580,
+                        last_signal: '14:25:12'
+                    },
+                    {
+                        machine_id: 'A4',
+                        status: 'GREEN',
+                        total_qty: 610,
+                        last_signal: '14:25:15'
+                    },
+                    {
+                        machine_id: 'B1',
+                        status: 'GREEN',
+                        total_qty: 530,
+                        last_signal: '14:25:08'
+                    },
+                    {
+                        machine_id: 'B2',
+                        status: 'GREEN',
+                        total_qty: 590,
+                        last_signal: '14:25:11'
+                    },
+                    {
+                        machine_id: 'B3',
+                        status: 'RED',
+                        total_qty: 410,
+                        last_signal: '14:18:40'
+                    },
+                    {
+                        machine_id: 'B4',
+                        status: 'GREEN',
+                        total_qty: 605,
+                        last_signal: '14:25:14'
                     }
-                })
-                .catch(err => console.error("Error fetching data:", err));
+                ]
+            };
+
+            // Render awal (Hijau)
+            updateUI(simulatedData);
+
+            // 2. TIMEOUT 5 DETIK (5000 ms) UNTUK UBAH KE MERAH (RED)
+            setTimeout(() => {
+                // Ubah IDU-Electrical & ODU-Aging menjadi RED
+                simulatedData.machines.forEach(m => {
+                    if (m.machine_id === 'IDU-Electrical' || m.machine_id === 'ODU-Aging') {
+                        m.status = 'RED';
+                        m.total_stop_seconds = 300;
+                    }
+                });
+
+                // Re-render UI & Model 3D ke warna Merah
+                updateUI(simulatedData);
+            }, 5000);
+        }
+
+        // Helper function untuk re-render tampilan UI
+        function updateUI(data) {
+            document.getElementById('current-month').innerText = data.current_month;
+
+            const isOffProduction = isAllInjectionStopped(data.machines);
+            const offBadge = document.getElementById('off-production-badge');
+            if (offBadge) {
+                if (isOffProduction) offBadge.classList.remove('d-none');
+                else offBadge.classList.add('d-none');
+            }
+
+            latestMachineData = data.machines;
+
+            renderArea('area-injection', data.machines, id => /^([AB][1-4])$/i.test(id), isOffProduction, 'col-md-3 col-6');
+            renderMasterArea('area-idu', MASTER_IDU, data.machines, isOffProduction, 'col-md-4 col-6');
+            renderMasterArea('area-odu', MASTER_ODU, data.machines, isOffProduction, 'col-md-4 col-6');
+
+            update3DStatus();
+        }
+
+        // Helper function untuk re-render tampilan UI
+        function updateUI(data) {
+            document.getElementById('current-month').innerText = data.current_month;
+
+            const isOffProduction = isAllInjectionStopped(data.machines);
+            const offBadge = document.getElementById('off-production-badge');
+            if (offBadge) {
+                if (isOffProduction) offBadge.classList.remove('d-none');
+                else offBadge.classList.add('d-none');
+            }
+
+            latestMachineData = data.machines;
+
+            renderArea('area-injection', data.machines, id => /^([AB][1-4])$/i.test(id), isOffProduction, 'col-md-3 col-6');
+            renderMasterArea('area-idu', MASTER_IDU, data.machines, isOffProduction, 'col-md-4 col-6');
+            renderMasterArea('area-odu', MASTER_ODU, data.machines, isOffProduction, 'col-md-4 col-6');
+
+            update3DStatus();
         }
 
         function renderArea(containerId, machines, filterFn, isOffProduction, colClass = 'col-md-3') {
@@ -611,7 +771,6 @@
             initSingle3D('inj');
 
             fetchDashboardData();
-            setInterval(fetchDashboardData, 3000);
 
             const carouselElem = document.getElementById('dashboardCarousel');
             if (carouselElem) {
