@@ -106,7 +106,9 @@
             <h2 class="fw-bold mb-0 text-white">DASHBOARD LINE MONITORING</h2>
             <div class="d-flex align-items-center gap-3">
                 <span id="off-production-badge" class="badge bg-warning text-dark fs-6 d-none">OFF PRODUCTION</span>
-                <span class="badge bg-primary fs-6" id="current-month">MEMUAT...</span>
+                <a href="history.php" class="btn btn-warning fw-bold shadow-sm">
+                    <i class="bi bi-clock-history"></i> Lihat History Stop
+                </a>
             </div>
         </div>
 
@@ -205,21 +207,52 @@
 
     <script>
         // Master List Data IDU & ODU
-        const MASTER_IDU = [
-            { id: 'IDU-Cabinet', name: 'Cabinet Assy' },
-            { id: 'IDU-Helium', name: 'Evaporator Assy' },
-            { id: 'IDU-Main', name: 'Main Assy' },
-            { id: 'IDU-Electrical', name: 'Electrical Inspection' },
-            { id: 'IDU-Final', name: 'Final Process' }
+        const MASTER_IDU = [{
+                id: 'IDU-Cabinet',
+                name: 'Cabinet Assy'
+            },
+            {
+                id: 'IDU-Helium',
+                name: 'Evaporator Assy'
+            },
+            {
+                id: 'IDU-Main',
+                name: 'Main Assy'
+            },
+            {
+                id: 'IDU-Electrical',
+                name: 'Electrical Inspection'
+            },
+            {
+                id: 'IDU-Final',
+                name: 'Final Process'
+            }
         ];
 
-        const MASTER_ODU = [
-            { id: 'ODU-Basepan', name: 'Basepan Assy' },
-            { id: 'ODU-Vacuum', name: 'Vacuum Process' },
-            { id: 'ODU-Charging', name: 'Charging Process' },
-            { id: 'ODU-Main', name: 'Main Assy' },
-            { id: 'ODU-Aging', name: 'Electrical Aging' },
-            { id: 'ODU-Final', name: 'Final Process' }
+        const MASTER_ODU = [{
+                id: 'ODU-Basepan',
+                name: 'Basepan Assy'
+            },
+            {
+                id: 'ODU-Vacuum',
+                name: 'Vacuum Process'
+            },
+            {
+                id: 'ODU-Charging',
+                name: 'Charging Process'
+            },
+            {
+                id: 'ODU-Main',
+                name: 'Main Assy'
+            },
+            {
+                id: 'ODU-Aging',
+                name: 'Electrical Aging'
+            },
+            {
+                id: 'ODU-Final',
+                name: 'Final Process'
+            }
         ];
 
         // MAPPING NODE & MESH UNTUK MAIN ASSY LINE 3D (IDU & ODU)
@@ -249,7 +282,7 @@
         };
 
         const COLOR_RUNNING = 0x00FF00; // Hijau
-        const COLOR_STOP = 0xFF0000;    // Merah
+        const COLOR_STOP = 0xFF0000; // Merah
         const COLOR_OFFLINE = 0x6c757d; // Abu-abu
 
         const scenes3D = {
@@ -297,7 +330,10 @@
 
             item.camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
 
-            item.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            item.renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                alpha: true
+            });
             item.renderer.setSize(container.clientWidth, container.clientHeight);
             item.renderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(item.renderer.domElement);
@@ -467,8 +503,6 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        document.getElementById('current-month').innerText = data.current_month;
-
                         const isOffProduction = isAllInjectionStopped(data.machines);
                         const offBadge = document.getElementById('off-production-badge');
                         if (offBadge) {
@@ -504,27 +538,30 @@
                 const statusText = isGreen ? 'RUNNING' : 'STOP';
                 const statusBadge = isGreen ? 'bg-light text-success' : 'bg-dark text-white';
 
+                // Hitung/format Total Stop Time sama seperti di master area
+                const displayStopTime = isOffProduction ? 'OFF' : formatTime(m.total_stop_seconds || 0);
+
                 return `
-                <div class="${colClass}">
-                    <div class="card card-machine ${bgClass} text-white shadow-lg h-100">
-                        <div class="card-body text-center d-flex flex-column justify-content-between p-2">
-                            <div>
-                                <h5 class="card-title fw-bold my-1">${m.machine_id}</h5>
-                                <span class="badge ${statusBadge} fs-6 px-3 py-1 fw-bold shadow-sm mb-2">${statusText}</span>
-                            </div>
-                            <div class="bg-dark bg-opacity-25 rounded-3 p-2 text-start mt-1 fs-6">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span>Total Qty:</span>
-                                    <strong>${m.total_qty || 0}</strong>
-                                </div>
-                                <div class="d-flex justify-content-between border-top border-secondary pt-1 mt-1">
-                                    <span>Last Signal:</span>
-                                    <strong class="text-info">${m.last_signal || '-'}</strong>
-                                </div>
-                            </div>
+        <div class="${colClass}">
+            <div class="card card-machine ${bgClass} text-white shadow-lg h-100">
+                <div class="card-body text-center d-flex flex-column justify-content-between p-2">
+                    <div>
+                        <h5 class="card-title fw-bold my-1">${m.machine_id}</h5>
+                        <span class="badge ${statusBadge} fs-6 px-3 py-1 fw-bold shadow-sm mb-2">${statusText}</span>
+                    </div>
+                    <div class="bg-dark bg-opacity-25 rounded-3 p-2 text-start mt-1 fs-6">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Total Stop Qty:</span>
+                            <strong>${m.total_qty || 0}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between border-top border-secondary pt-1 mt-1">
+                            <span>Total Stop Time:</span>
+                            <strong class="text-warning">${displayStopTime}</strong>
                         </div>
                     </div>
-                </div>`;
+                </div>
+            </div>
+        </div>`;
             }).join('');
         }
 
@@ -558,11 +595,11 @@
                             </div>
                             <div class="bg-dark bg-opacity-25 rounded-3 p-2 text-start mt-1 fs-6">
                                 <div class="d-flex justify-content-between mb-1">
-                                    <span>Total Qty:</span>
+                                    <span>Total Stop Qty:</span>
                                     <strong>${machineObj.total_qty || 0}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between border-top border-secondary pt-1 mt-1">
-                                    <span>Stop Time:</span>
+                                    <span>Total Stop Time:</span>
                                     <strong class="text-warning">${displayStopTime}</strong>
                                 </div>
                             </div>

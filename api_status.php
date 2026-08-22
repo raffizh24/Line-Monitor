@@ -45,28 +45,30 @@ while ($row = $result->fetch_assoc()) {
     $db_status = strtoupper($row['status'] ?? 'GREEN');
     $machine_id = $row['machine_id'];
 
-    // 1. Cek apakah mesin tergolong Injection atau kode A1-A4 / B1-B4
+    // 1. Cek tipe mesin (Injection / A1-A4 / B1-B4)
     $is_injection = (stripos($machine_id, 'injection') !== false);
-
-    // Pattern Regex untuk mencocokkan kode mesin A1 s/d A4 atau B1 s/d B4
-    $is_ab_range = (bool) preg_match('/\b[AB][1-4]\b/i', $machine_id);
-
-    // Combine kondisi
+    $is_ab_range  = (bool) preg_match('/\b[AB][1-4]\b/i', $machine_id);
     $use_180_timeout = ($is_injection || $is_ab_range);
 
     // 2. Tentukan status akhir
     if ($use_180_timeout) {
-        // Khusus Injection & A1-A4 / B1-B4:
-        // Jadi RED jika tidak ada sinyal, status DB RED, atau elapsed > 180 detik
         if ($elapsed === null || $db_status === 'RED' || $elapsed > 180) {
             $final_status = 'RED';
         } else {
             $final_status = 'GREEN';
         }
     } else {
-        // Mesin lainnya (Main Assy, dll):
-        // Tetap menggunakan status terakhir dari database tanpa cek 180 detik
         $final_status = $db_status;
+    }
+
+    // 3. Hitung Real-time Total Stop Seconds
+    $base_stop_seconds = (int)($row['total_stop_seconds'] ?? 0);
+
+    // Jika mesin sedang STOP (RED), tambahkan elapsed time sejak sinyal terakhir
+    if ($final_status === 'RED' && $elapsed !== null) {
+        $calculated_stop_seconds = $base_stop_seconds + $elapsed;
+    } else {
+        $calculated_stop_seconds = $base_stop_seconds;
     }
 
     $machines[] = [
@@ -75,7 +77,7 @@ while ($row = $result->fetch_assoc()) {
         'last_signal'        => $row['last_signal'],
         'elapsed'            => $elapsed,
         'total_qty'          => (int)$row['total_qty'],
-        'total_stop_seconds' => (int)($row['total_stop_seconds'] ?? 0)
+        'total_stop_seconds' => $calculated_stop_seconds
     ];
 }
 
